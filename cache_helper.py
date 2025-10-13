@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # cache_helper.py
 """
 Return a cache object. If REDIS_URL env is set and Redis is reachable,
@@ -53,3 +54,15 @@ class RedisWrapper:
             return False
     def delete(self, key):
         return self.r.delete(key)
+=======
+from cachelib import SimpleCache
+import redis
+
+def get_cache_client():
+    try:
+        # Try Redis first
+        return redis.Redis(host='localhost', port=6379, db=0)
+    except Exception:
+        # Fallback to in-memory cache
+        return SimpleCache()
+>>>>>>> 4bcee31aebe365d7f23dc94f4d1db58e93222dd7
