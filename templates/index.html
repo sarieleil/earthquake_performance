@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Earthquake Map</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Earthquake Map</h1>
+    <div id="map"></div>
+    <h2>Earthquake Data</h2>
+    <table>
+        <thead>
+            <tr><th>Place</th><th>Magnitude</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+            {% for eq in earthquakes %}
+            <tr>
+                <td>{{ eq.place }}</td>
+                <td>{{ eq.mag }}</td>
+                <td>{{ eq.time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var earthquakes = {{ earthquakes|tojson }};
+        earthquakes.forEach(eq => {
+            if (!eq.latitude || !eq.longitude) return;
+            var color = eq.mag >= 5 ? 'red' :
+                        eq.mag >= 3 ? 'orange' : 'green';
+            L.circleMarker([eq.latitude, eq.longitude], {
+                radius: 4 + (eq.mag || 0),
+                fillColor: color,
+                color: '#000',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map)
+            .bindPopup(`<b>${eq.place || 'Unknown'}</b><br>Mag: ${eq.mag}<br>Time: ${eq.time}`);
+        });
+    </script>
+</body>
+</html>
