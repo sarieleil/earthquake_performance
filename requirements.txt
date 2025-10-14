@@ -1,8 +1,5 @@
-Flask==3.0.3
-pandas==2.2.3
-<<<<<<< HEAD
-SQLAlchemy==2.0.36
-Flask-Caching==2.3.0
-=======
->>>>>>> 4bcee31aebe365d7f23dc94f4d1db58e93222dd7
-gunicorn==23.0.0
+Flask==2.3.2
+pandas==2.1.1
+SQLAlchemy==2.0.20
+gunicorn==21.2.0
+python-dotenv==1.0.0
