@@ -1,96 +1,83 @@
-<<<<<<< HEAD
-from flask import Flask, render_template, request, jsonify
-from sqlalchemy import create_engine, text
-import time
-from cache_utils import SimpleCache
-
-app = Flask(__name__)
-engine = create_engine("sqlite:///earthquakes.db")
-cache = SimpleCache()
-
-@app.route("/")
-def index():
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT * FROM earthquakes LIMIT 100"))
-        earthquakes = [dict(row._mapping) for row in result]
-    return render_template("index.html", earthquakes=earthquakes)
-
-# ----------- Query (Part 10a) -----------
-@app.route("/query_range", methods=["GET"])
-def query_range():
-    start = float(request.args.get("start"))
-    end = float(request.args.get("end"))
-    key = f"range:{start}-{end}"
-
-    cached = cache.get(key)
-    if cached:
-        return jsonify({"source": "cache", **cached, **cache.stats()})
-
-    start_time = time.time()
-    with engine.connect() as conn:
-        query = text("SELECT id, net, time, latitude, longitude FROM earthquakes WHERE time BETWEEN :start AND :end")
-        result = conn.execute(query, {"start": start, "end": end})
-        rows = [dict(row._mapping) for row in result]
-    duration = round(time.time() - start_time, 4)
-
-    data = {"rows": rows, "time": duration}
-    cache.set(key, data)
-    return jsonify({"source": "db", **data, **cache.stats()})
-
-# ----------- Query (Part 10b) -----------
-@app.route("/query_value", methods=["GET"])
-def query_value():
-    time_val = float(request.args.get("time"))
-    net = request.args.get("net")
-    count = int(request.args.get("count"))
-
-    key = f"value:{time_val}-{net}-{count}"
-    cached = cache.get(key)
-    if cached:
-        return jsonify({"source": "cache", **cached, **cache.stats()})
-
-    start_time = time.time()
-    with engine.connect() as conn:
-        query = text("SELECT id, net, time, latitude, longitude FROM earthquakes WHERE net = :net AND time >= :time ORDER BY time LIMIT :count")
-        result = conn.execute(query, {"net": net, "time": time_val, "count": count})
-        rows = [dict(row._mapping) for row in result]
-    duration = round(time.time() - start_time, 4)
-
-    data = {"rows": rows, "time": duration}
-    cache.set(key, data)
-    return jsonify({"source": "db", **data, **cache.stats()})
-
-# ----------- Update Record (Part 12) -----------
-@app.route("/update_record", methods=["POST"])
-def update_record():
-    record_id = request.json.get("id")
-    updates = request.json.get("updates", {})
-
-    set_clause = ", ".join([f"{k} = :{k}" for k in updates])
-    updates["id"] = record_id
-
-    with engine.connect() as conn:
-        conn.execute(text(f"UPDATE earthquakes SET {set_clause} WHERE id = :id"), updates)
-        conn.commit()
-    return jsonify({"status": "success", "updated_fields": updates})
-
-=======
-from flask import Flask, render_template
-import pandas as pd
 import os
+import pandas as pd
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-# Load CSV
-DATA_PATH = os.path.join(os.path.dirname(__file__), "data/all_month.csv")
-df = pd.read_csv(DATA_PATH)
+# Optional: path for uploaded or static data
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+# ---------- ROUTES ----------
 
 @app.route("/")
 def index():
-    # Pass earthquake data to template
-    earthquakes = df.to_dict(orient="records")
-    return render_template("index.html", earthquakes=earthquakes)
+    """Default homepage route."""
+    return "<h1>✅ Flask App Deployed Successfully on Render</h1><p>Use /process or /upload for API calls.</p>"
 
->>>>>>> 4bcee31aebe365d7f23dc94f4d1db58e93222dd7
+
+@app.route("/health")
+def health_check():
+    """Simple health check endpoint."""
+    return jsonify({"status": "ok", "environment": os.getenv("RENDER", "local")})
+
+
+@app.route("/process", methods=["POST"])
+def process_data():
+    """
+    Example POST endpoint:
+    Accepts JSON with numeric data and returns the sum and mean.
+    """
+    try:
+        data = request.get_json(force=True)
+        values = data.get("values", [])
+
+        if not isinstance(values, list) or not all(isinstance(v, (int, float)) for v in values):
+            return jsonify({"error": "Invalid input. Expected JSON: {'values': [numbers]}"}), 400
+
+        df = pd.DataFrame(values, columns=["numbers"])
+        result = {
+            "count": int(df["numbers"].count()),
+            "sum": float(df["numbers"].sum()),
+            "mean": float(df["numbers"].mean()),
+        }
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    """
+    Example file upload endpoint:
+    Accepts a CSV file and returns summary stats.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(filepath)
+
+        df = pd.read_csv(filepath)
+        summary = df.describe(include="all").to_dict()
+
+        return jsonify({
+            "message": f"File '{file.filename}' uploaded successfully.",
+            "summary": summary
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------- MAIN ENTRY POINT ----------
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
