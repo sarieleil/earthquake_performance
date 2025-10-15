@@ -1,78 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Earthquake Map</title>
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-VzR2vH2Mf4yE1+2x35o+YnwS9pC6kFbY+8tV9gYzj6kFq6cU1l1JXkN/5w4Xc3j+7AxmTf3kBxZh7F3J5nDlT6w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #map { height: 600px; width: 100%; margin-bottom: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-    </style>
+<meta charset="UTF-8">
+<title>Earthquake Performance</title>
+<style>
+body { font-family: Arial; margin: 20px; }
+input, button { margin: 5px 0; padding: 5px; }
+</style>
 </head>
 <body>
-    <h1>Earthquake Map</h1>
-    <div id="map"></div>
+<h1>Earthquake Performance Quiz</h1>
 
-    <h2>Earthquake Data</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Place</th>
-                <th>Magnitude</th>
-                <th>Time</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for eq in earthquakes %}
-            <tr>
-                <td>{{ eq.place }}</td>
-                <td>{{ eq.mag }}</td>
-                <td>{{ eq.time }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<h2>Upload CSV</h2>
+<input type="file" id="csvFile">
+<button onclick="uploadCSV()">Upload</button>
+<p id="uploadStatus"></p>
 
-    <!-- Leaflet JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-Vu8q6aS0N5PYg9PcFvFr4TzM0XcVLhY7x2k2VZx3pI5O3U+mzI0xKk3k/ZFJ0pVZNYXyV/nIh9EpH4Zy/TPAqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script>
-        // Initialize map
-        var map = L.map('map').setView([20, 0], 2);
+<h2>Query by Time Range</h2>
+Start: <input type="number" id="startTime"> 
+End: <input type="number" id="endTime">
+<button onclick="queryRange()">Query</button>
+<pre id="rangeResults"></pre>
 
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-        }).addTo(map);
+<h2>Query by Net Value</h2>
+Time: <input type="number" id="netTime"> 
+Net: <input type="text" id="netVal"> 
+Count: <input type="number" id="countVal">
+<button onclick="queryNet()">Query</button>
+<pre id="netResults"></pre>
 
-        // Earthquake data from Flask
-        var earthquakes = {{ earthquakes|tojson|safe }};
+<script>
+function uploadCSV(){
+    const file = document.getElementById('csvFile').files[0];
+    const formData = new FormData();
+    formData.append('file', file);
 
-        // Add markers
-        earthquakes.forEach(function(eq) {
-            if (eq.latitude && eq.longitude) {
-                var color = eq.mag >= 5 ? 'red' :
-                            eq.mag >= 3 ? 'orange' : 'green';
+    fetch('/upload', {method:'POST', body: formData})
+        .then(res => res.json())
+        .then(data => document.getElementById('uploadStatus').innerText = data.message)
+        .catch(err => console.error(err));
+}
 
-                L.circleMarker([eq.latitude, eq.longitude], {
-                    radius: 4 + (eq.mag || 0),
-                    fillColor: color,
-                    color: '#000',
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map)
-                .bindPopup(
-                    `<b>${eq.place}</b><br>` +
-                    `Magnitude: ${eq.mag || 'N/A'}<br>` +
-                    `Time: ${eq.time || 'N/A'}`
-                );
-            }
-        });
-    </script>
+function queryRange(){
+    const start = document.getElementById('startTime').value;
+    const end = document.getElementById('endTime').value;
+    fetch(`/query_range?start=${start}&end=${end}`)
+        .then(res => res.json())
+        .then(data => document.getElementById('rangeResults').innerText = JSON.stringify(data, null, 2));
+}
+
+function queryNet(){
+    const time = document.getElementById('netTime').value;
+    const net = document.getElementById('netVal').value;
+    const count = document.getElementById('countVal').value;
+    fetch(`/query_net?time=${time}&net=${net}&count=${count}`)
+        .then(res => res.json())
+        .then(data => document.getElementById('netResults').innerText = JSON.stringify(data, null, 2));
+}
+</script>
 </body>
 </html>
