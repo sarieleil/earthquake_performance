@@ -1,45 +1,71 @@
-from flask import Flask, request, render_template, jsonify
-import os
+from flask import Flask, render_template, request, jsonify
+from models import insert_earthquake_data, query_time_range, query_net_value, update_event
+from cache_utils import SimpleCache
+import time
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Simple in-memory cache
+cache = SimpleCache()
 
-# ---------------------------
-# Main page route
-# ---------------------------
-@app.route("/")
+@app.route('/')
 def index():
-    # Render the HTML upload page
-    return render_template("index.html")
+    return render_template('index.html')
 
-# ---------------------------
-# Upload endpoint
-# ---------------------------
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    if "file" not in request.files:
-        return "No file part", 400
-    file = request.files["file"]
-    if file.filename == "":
-        return "No selected file", 400
+@app.route('/upload', methods=['POST'])
+def upload_csv():
+    file = request.files['file']
+    if file:
+        insert_earthquake_data(file)
+        return jsonify({"message": "Processing completed successfully"})
+    return jsonify({"message": "No file uploaded"}), 400
 
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-    file.save(filepath)
-    return "File uploaded successfully"
+@app.route('/query_range', methods=['GET'])
+def query_range():
+    start = int(request.args.get('start'))
+    end = int(request.args.get('end'))
+    
+    cache_key = f"range:{start}:{end}"
+    if cache_key in cache:
+        results = cache.get(cache_key)
+        cache_hit = True
+    else:
+        start_time = time.time()
+        results = query_time_range(start, end)
+        query_time_taken = time.time() - start_time
+        cache.set(cache_key, results)
+        cache_hit = False
+    return jsonify({"results": results, "cache_hit": cache_hit})
 
-# ---------------------------
-# Process endpoint
-# ---------------------------
-@app.route("/process")
-def process():
-    # Placeholder logic - replace with actual CSV processing
-    return "Processing completed successfully"
+@app.route('/query_net', methods=['GET'])
+def query_net():
+    start_time_val = int(request.args.get('time'))
+    net_val = request.args.get('net')
+    count = int(request.args.get('count'))
 
-# ---------------------------
-# Run server
-# ---------------------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    cache_key = f"net:{start_time_val}:{net_val}:{count}"
+    if cache_key in cache:
+        results = cache.get(cache_key)
+        cache_hit = True
+    else:
+        start = time.time()
+        results = query_net_value(start_time_val, net_val, count)
+        query_time_taken = time.time() - start
+        cache.set(cache_key, results)
+        cache_hit = False
+    return jsonify({"results": results, "cache_hit": cache_hit})
+
+@app.route('/update_event', methods=['POST'])
+def update():
+    event_id = int(request.form.get('id'))
+    data = {
+        "time": int(request.form.get('time')),
+        "net": request.form.get('net'),
+        "lat": float(request.form.get('lat')),
+        "lon": float(request.form.get('lon'))
+    }
+    update_event(event_id, data)
+    return jsonify({"message": "Event updated successfully"})
+
+if __name__ == '__main__':
+    app.run(debug=True)

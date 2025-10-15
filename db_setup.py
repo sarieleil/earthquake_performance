@@ -1,13 +1,17 @@
-import pandas as pd
-import sqlite3
+import os
+import csv
+from models import init_db
 
-# Read earthquake CSV file (make sure your file is in the same folder)
-csv_file = "earthquakes.csv"  # <-- change if your file has another name
-df = pd.read_csv(csv_file)
+# CSV file path (Render environment)
+CSV_FILE = os.environ.get("CSV_FILE_PATH", "uploads/earthquakes.csv")
 
-# Create SQLite database
-conn = sqlite3.connect("earthquakes.db")
-df.to_sql("earthquakes", conn, if_exists="replace", index=False)
-conn.close()
+# Create uploads folder if not exists
+os.makedirs("uploads", exist_ok=True)
 
-print("✅ Database created successfully: earthquakes.db")
+if os.path.exists(CSV_FILE):
+    print(f"Loading data from {CSV_FILE}...")
+    init_db(CSV_FILE)
+    print("Database initialized and CSV loaded successfully!")
+else:
+    print("No CSV found. Database created empty.")
+    init_db()
