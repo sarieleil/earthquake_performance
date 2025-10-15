@@ -2,79 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Earthquake Performance Analyzer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 40px;
-            background-color: #f5f7fa;
-        }
-        h1 {
-            color: #2b4d73;
-        }
-        .upload-container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 400px;
-            margin: 0 auto;
-        }
-        input[type="file"] {
-            margin: 20px 0;
-        }
-        button {
-            background-color: #2b4d73;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #1a334d;
-        }
-        #result {
-            margin-top: 30px;
-        }
-    </style>
 </head>
 <body>
     <h1>🌍 Earthquake Performance Analyzer</h1>
 
-    <div class="upload-container">
-        <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" name="file" id="fileInput" accept=".csv" required>
-            <br>
-            <button type="submit">Upload CSV</button>
-        </form>
-    </div>
+    <h2>Upload CSV</h2>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">Upload</button>
+    </form>
 
-    <div id="result"></div>
-
-    <script>
-        document.getElementById('uploadForm').addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const formData = new FormData();
-            const fileInput = document.getElementById('fileInput');
-            formData.append('file', fileInput.files[0]);
-
-            const uploadResponse = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (uploadResponse.ok) {
-                const processResponse = await fetch('/process');
-                const resultText = await processResponse.text();
-                document.getElementById('result').innerHTML = `<h3>Result:</h3><pre>${resultText}</pre>`;
-            } else {
-                document.getElementById('result').innerHTML = `<p style="color:red;">File upload failed.</p>`;
-            }
-        });
-    </script>
+    <h2>Process Data</h2>
+    <form action="/process" method="GET">
+        <button type="submit">Process</button>
+    </form>
 </body>
 </html>
