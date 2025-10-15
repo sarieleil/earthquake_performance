@@ -1,21 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Earthquake Performance Analyzer</title>
+<meta charset="UTF-8">
+<title>Earthquake Performance</title>
+<style>
+body { font-family: Arial; margin: 20px; }
+input, button { margin: 5px 0; padding: 5px; }
+</style>
 </head>
 <body>
-    <h1>🌍 Earthquake Performance Analyzer</h1>
+<h1>Earthquake Performance Quiz</h1>
 
-    <h2>Upload CSV</h2>
-    <form action="/upload" method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".csv" required>
-        <button type="submit">Upload</button>
-    </form>
+<h2>Upload CSV</h2>
+<input type="file" id="csvFile">
+<button onclick="uploadCSV()">Upload</button>
+<p id="uploadStatus"></p>
 
-    <h2>Process Data</h2>
-    <form action="/process" method="GET">
-        <button type="submit">Process</button>
-    </form>
+<h2>Query by Time Range</h2>
+Start: <input type="number" id="startTime"> 
+End: <input type="number" id="endTime">
+<button onclick="queryRange()">Query</button>
+<pre id="rangeResults"></pre>
+
+<h2>Query by Net Value</h2>
+Time: <input type="number" id="netTime"> 
+Net: <input type="text" id="netVal"> 
+Count: <input type="number" id="countVal">
+<button onclick="queryNet()">Query</button>
+<pre id="netResults"></pre>
+
+<script>
+function uploadCSV(){
+    const file = document.getElementById('csvFile').files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/upload', {method:'POST', body: formData})
+        .then(res => res.json())
+        .then(data => document.getElementById('uploadStatus').innerText = data.message)
+        .catch(err => console.error(err));
+}
+
+function queryRange(){
+    const start = document.getElementById('startTime').value;
+    const end = document.getElementById('endTime').value;
+    fetch(`/query_range?start=${start}&end=${end}`)
+        .then(res => res.json())
+        .then(data => document.getElementById('rangeResults').innerText = JSON.stringify(data, null, 2));
+}
+
+function queryNet(){
+    const time = document.getElementById('netTime').value;
+    const net = document.getElementById('netVal').value;
+    const count = document.getElementById('countVal').value;
+    fetch(`/query_net?time=${time}&net=${net}&count=${count}`)
+        .then(res => res.json())
+        .then(data => document.getElementById('netResults').innerText = JSON.stringify(data, null, 2));
+}
+</script>
 </body>
 </html>
